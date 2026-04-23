@@ -1,4 +1,6 @@
-// fake jobs data — real DB comes Day 3
+const asyncHandler = require("../middlewares/async.middleware")
+const CustomError = require("../middlewares/customError")
+
 const jobs = [
   {
     id: "1",
@@ -8,8 +10,7 @@ const jobs = [
     type: "fulltime",
     salary: { min: 600000, max: 1200000 },
     skills: ["Node.js", "Express", "MongoDB"],
-    experience: "1-3 years",
-    postedAt: "2026-04-20"
+    experience: "1-3 years"
   },
   {
     id: "2",
@@ -19,8 +20,7 @@ const jobs = [
     type: "remote",
     salary: { min: 400000, max: 800000 },
     skills: ["React", "Tailwind", "JavaScript"],
-    experience: "0-1 years",
-    postedAt: "2026-04-19"
+    experience: "0-1 years"
   },
   {
     id: "3",
@@ -30,104 +30,59 @@ const jobs = [
     type: "fulltime",
     salary: { min: 800000, max: 1500000 },
     skills: ["Node.js", "React", "PostgreSQL"],
-    experience: "2-4 years",
-    postedAt: "2026-04-18"
+    experience: "2-4 years"
   }
 ]
 
-// GET all jobs
-const getAllJobs = (req, res) => {
+const getAllJobs = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
+    requestedAt: req.requestTime,
     count: jobs.length,
     jobs
   })
-}
+})
 
-// GET single job
-const getJob = (req, res) => {
+const getJob = asyncHandler(async (req, res) => {
   const job = jobs.find(j => j.id === req.params.id)
-
-  if (!job) {
-    return res.status(404).json({
-      success: false,
-      message: "Job not found"
-    })
-  }
-
+  if (!job) throw new CustomError("Job not found", 404)
   res.status(200).json({ success: true, job })
-}
+})
 
-// POST create job
-const createJob = (req, res) => {
-  const { title, company, location, type, salary, skills } = req.body
-
+const createJob = asyncHandler(async (req, res) => {
+  const { title, company, location, type } = req.body
   if (!title || !company || !location || !type) {
-    return res.status(400).json({
-      success: false,
-      message: "title, company, location and type are required"
-    })
+    throw new CustomError("title, company, location and type are required", 400)
   }
-
   const newJob = {
     id: String(jobs.length + 1),
     title,
     company,
     location,
     type,
-    salary,
-    skills,
     postedAt: new Date().toISOString().split("T")[0]
   }
-
   res.status(201).json({ success: true, job: newJob })
-}
+})
 
-// PUT update job
-const updateJob = (req, res) => {
-  const id = req.params.id
-  const data = req.body
-
-  const job = jobs.find(j => j.id === id)
-
-  if (!job) {
-    return res.status(404).json({
-      success: false,
-      message: "Job not found"
-    })
-  }
-
+const updateJob = asyncHandler(async (req, res) => {
+  const job = jobs.find(j => j.id === req.params.id)
+  if (!job) throw new CustomError("Job not found", 404)
   res.status(200).json({
     success: true,
     message: "Job updated",
-    id,
-    updated: data
+    id: req.params.id,
+    updated: req.body
   })
-}
+})
 
-// DELETE job
-const deleteJob = (req, res) => {
-  const id = req.params.id
-
-  const job = jobs.find(j => j.id === id)
-
-  if (!job) {
-    return res.status(404).json({
-      success: false,
-      message: "Job not found"
-    })
-  }
-
+const deleteJob = asyncHandler(async (req, res) => {
+  const job = jobs.find(j => j.id === req.params.id)
+  if (!job) throw new CustomError("Job not found", 404)
   res.status(200).json({
     success: true,
-    message: `Job with id ${id} deleted`
+    message: `Job with id ${req.params.id} deleted`
   })
-}
+})
 
-module.exports = {
-  getAllJobs,
-  getJob,
-  createJob,
-  updateJob,
-  deleteJob
-}
+module.exports = { getAllJobs, getJob, createJob, updateJob, deleteJob }
