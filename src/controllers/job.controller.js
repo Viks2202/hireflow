@@ -65,6 +65,43 @@ const deleteJob = asyncHandler(async (req, res) => {
   })
 })
 
+// GET job stats
+const getJobStats = asyncHandler(async (req, res) => {
+  const jobs = await Job.find({ isActive: true })
+  const total = jobs.length
+
+  if (total === 0) {
+    return res.status(200).json({
+      success: true,
+      stats: { totalJobs: 0 }
+    })
+  }
+
+  // count by type
+  const fulltime = jobs.filter(j => j.type === "fulltime").length
+  const remote = jobs.filter(j => j.type === "remote").length
+  const internship = jobs.filter(j => j.type === "internship").length
+  const parttime = jobs.filter(j => j.type === "parttime").length
+  const contract = jobs.filter(j => j.type === "contract").length
+
+  // highest paying
+  const highestPaying = jobs.reduce((max, j) =>
+    j.salary.max > max.salary.max ? j : max, jobs[0])
+
+  res.status(200).json({
+    success: true,
+    stats: {
+      totalJobs: total,
+      byType: { fulltime, remote, internship, parttime, contract },
+      highestPaying: {
+        title: highestPaying.title,
+        company: highestPaying.company,
+        maxSalary: highestPaying.salary.max
+      }
+    }
+  })
+})
+
 module.exports = {
   getAllJobs,
   getJob,
