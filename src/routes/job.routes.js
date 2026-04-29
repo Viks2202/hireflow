@@ -1,17 +1,24 @@
 const express = require("express")
 const router = express.Router()
+const jobCheck = require("../middlewares/jobCheck.middleware")
 
 const {
   getAllJobs,
   getJob,
   createJob,
   updateJob,
-  deleteJob
+  deleteJob,
+  getJobStats,
+  getJobsByType,
+  searchJobs
 } = require("../controllers/job.controller")
 
+router.get("/search", searchJobs)
+router.get("/stats", getJobStats)
+router.get("/type/:type", getJobsByType)
 router.get("/", getAllJobs)
 router.get("/:id", getJob)
-router.post("/", createJob)
+router.post("/", jobCheck, createJob)
 router.put("/:id", updateJob)
 router.delete("/:id", deleteJob)
 

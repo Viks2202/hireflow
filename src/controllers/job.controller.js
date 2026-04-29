@@ -102,10 +102,55 @@ const getJobStats = asyncHandler(async (req, res) => {
   })
 })
 
+const getJobsByType = asyncHandler(async (req, res) => {
+  const { type } = req.params
+  const validTypes = ["fulltime", "parttime", "remote", "contract", "internship"]
+
+  if (!validTypes.includes(type)) {
+    throw new CustomError("Invalid job type", 400)
+  }
+
+  const jobs = await Job.find({ type, isActive: true })
+
+  res.status(200).json({
+    success: true,
+    type,
+    count: jobs.length,
+    jobs
+  })
+})
+
+const searchJobs = asyncHandler(async (req, res) => {
+  const { q } = req.query
+
+  if (!q) {
+    throw new CustomError("Search query is required", 400)
+  }
+
+  const jobs = await Job.find({
+    $or: [
+      { title: { $regex: q, $options: "i" } },
+      { company: { $regex: q, $options: "i" } },
+      { location: { $regex: q, $options: "i" } }
+    ],
+    isActive: true
+  })
+
+  res.status(200).json({
+    success: true,
+    query: q,
+    count: jobs.length,
+    jobs
+  })
+})
+
 module.exports = {
   getAllJobs,
   getJob,
   createJob,
   updateJob,
-  deleteJob
+  deleteJob,
+  getJobStats,
+  getJobsByType,
+  searchJobs
 }
