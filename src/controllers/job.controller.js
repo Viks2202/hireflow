@@ -4,11 +4,85 @@ const Job = require("../models/job.model")
 
 // GET all jobs
 const getAllJobs = asyncHandler(async (req, res) => {
-  const jobs = await Job.find({ isActive: true })
+  const {
+    type,
+    location,
+    minSalary,
+    maxSalary,
+    search,
+    skills,
+    sort,
+    page,
+    limit
+  } = req.query
+
+  // build filter object
+  const filter = { isActive: true }
+
+  // type filter
+  if (type) {
+    filter.type = type
+  }
+
+  // location filter
+  if (location) {
+    filter.location = { $regex: location, $options: "i" }
+  }
+
+  // salary range filter
+  if (minSalary || maxSalary) {
+    filter["salary.min"] = {}
+    if (minSalary) filter["salary.min"].$gte = Number(minSalary)
+    if (maxSalary) filter["salary.max"] = { $lte: Number(maxSalary) }
+  }
+
+  // skills filter
+  if (skills) {
+    const skillsArray = skills.split(",")
+    filter.skills = { $in: skillsArray }
+  }
+
+  // search filter — title, company, location
+  if (search) {
+    filter.$or = [
+      { title: { $regex: search, $options: "i" } },
+      { company: { $regex: search, $options: "i" } },
+      { location: { $regex: search, $options: "i" } }
+    ]
+  }
+
+  // pagination
+  const pageNum = Number(page) || 1
+  const limitNum = Number(limit) || 10
+  const skip = (pageNum - 1) * limitNum
+
+  // sort options
+  let sortOption = { createdAt: -1 }
+  if (sort === "salary_asc")  sortOption = { "salary.min": 1 }
+  if (sort === "salary_desc") sortOption = { "salary.max": -1 }
+  if (sort === "newest")      sortOption = { createdAt: -1 }
+  if (sort === "oldest")      sortOption = { createdAt: 1 }
+
+  // execute query
+  const jobs = await Job.find(filter)
+    .sort(sortOption)
+    .skip(skip)
+    .limit(limitNum)
+
+  // total count
+  const total = await Job.countDocuments(filter)
 
   res.status(200).json({
     success: true,
     requestedAt: req.requestTime,
+    pagination: {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+      hasNextPage: pageNum < Math.ceil(total / limitNum),
+      hasPrevPage: pageNum > 1
+    },
     count: jobs.length,
     jobs
   })
