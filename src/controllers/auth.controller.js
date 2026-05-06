@@ -1,15 +1,15 @@
 const jwt = require("jsonwebtoken")
+const crypto = require("crypto")
 const asyncHandler = require("../middlewares/async.middleware")
 const CustomError = require("../middlewares/customError")
 const User = require("../models/user.model")
+const { sendEmail, emailTemplates } = require("../utils/email")
 
-// generate access token
 const generateAccessToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE
   })
 
-// generate refresh token
 const generateRefreshToken = (id) =>
   jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
     expiresIn: process.env.JWT_REFRESH_EXPIRE
@@ -19,40 +19,46 @@ const generateRefreshToken = (id) =>
 const register = asyncHandler(async (req, res, next) => {
   const { name, email, password, role, company } = req.body
 
-  // check required fields
   if (!name || !email || !password) {
     return next(new CustomError("name, email and password are required", 400))
   }
 
-  // check duplicate email
   const existingUser = await User.findOne({ email })
   if (existingUser) {
     return next(new CustomError("Email already registered", 409))
   }
 
-  // employer must have company name
   if (role === "employer" && !company) {
-    return next(new CustomError("Company name is required for employers", 400))
+    return next(new CustomError("Company name required for employers", 400))
   }
 
-  // create user — password auto hashed by pre-save hook
   const user = await User.create({
-    name,
-    email,
-    password,
+    name, email, password,
     role: role || "candidate",
     company: company || null
   })
 
-  // generate tokens
+  const verifyToken = user.generateEmailVerifyToken()
+  await user.save({ validateBeforeSave: false })
+
+  const verifyUrl = `${process.env.CLIENT_URL}/verify-email/${verifyToken}`
+  const { subject, html } = emailTemplates.verifyEmail(name, verifyUrl)
+
+  try {
+    await sendEmail({ to: email, subject, html })
+  } catch (err) {
+    user.emailVerifyToken = undefined
+    user.emailVerifyExpire = undefined
+    await user.save({ validateBeforeSave: false })
+    console.error("Email failed:", err.message)
+  }
+
   const accessToken = generateAccessToken(user._id)
   const refreshTokenStr = generateRefreshToken(user._id)
 
-  // save refresh token to DB
   user.refreshToken = refreshTokenStr
   await user.save({ validateBeforeSave: false })
 
-  // send refresh token as httpOnly cookie
   res.cookie("refreshToken", refreshTokenStr, {
     httpOnly: true,
     secure: false,
@@ -62,15 +68,46 @@ const register = asyncHandler(async (req, res, next) => {
 
   res.status(201).json({
     success: true,
-    message: "Registered successfully",
+    message: "Registered. Please verify your email.",
     accessToken,
     user: {
       id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      company: user.company
+      company: user.company,
+      isVerified: user.isVerified
     }
+  })
+})
+
+// VERIFY EMAIL
+const verifyEmail = asyncHandler(async (req, res, next) => {
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex")
+
+  const user = await User.findOne({
+    emailVerifyToken: hashedToken,
+    emailVerifyExpire: { $gt: Date.now() }
+  }).select("+emailVerifyToken +emailVerifyExpire")
+
+  if (!user) {
+    return next(new CustomError("Invalid or expired token", 400))
+  }
+
+  user.isVerified = true
+  user.emailVerifyToken = undefined
+  user.emailVerifyExpire = undefined
+  await user.save({ validateBeforeSave: false })
+
+  const { subject, html } = emailTemplates.welcomeEmail(user.name)
+  await sendEmail({ to: user.email, subject, html })
+
+  res.status(200).json({
+    success: true,
+    message: "Email verified successfully"
   })
 })
 
@@ -82,14 +119,12 @@ const login = asyncHandler(async (req, res, next) => {
     return next(new CustomError("Email and password are required", 400))
   }
 
-  // get user with password
   const user = await User.findOne({ email }).select("+password")
 
   if (!user) {
     return next(new CustomError("Invalid email or password", 401))
   }
 
-  // compare password
   const isMatch = await user.comparePassword(password)
   if (!isMatch) {
     return next(new CustomError("Invalid email or password", 401))
@@ -117,8 +152,80 @@ const login = asyncHandler(async (req, res, next) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      company: user.company
+      company: user.company,
+      isVerified: user.isVerified
     }
+  })
+})
+
+// FORGOT PASSWORD
+const forgotPassword = asyncHandler(async (req, res, next) => {
+  const { email } = req.body
+
+  if (!email) {
+    return next(new CustomError("Email is required", 400))
+  }
+
+  const user = await User.findOne({ email })
+
+  if (!user) {
+    return res.status(200).json({
+      success: true,
+      message: "If this email exists, a reset link has been sent"
+    })
+  }
+
+  const resetToken = user.generateResetPasswordToken()
+  await user.save({ validateBeforeSave: false })
+
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`
+  const { subject, html } = emailTemplates.resetPassword(user.name, resetUrl)
+
+  try {
+    await sendEmail({ to: user.email, subject, html })
+  } catch (err) {
+    user.resetPasswordToken = undefined
+    user.resetPasswordExpire = undefined
+    await user.save({ validateBeforeSave: false })
+    return next(new CustomError("Email could not be sent", 500))
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "If this email exists, a reset link has been sent"
+  })
+})
+
+// RESET PASSWORD
+const resetPassword = asyncHandler(async (req, res, next) => {
+  const { password } = req.body
+
+  if (!password) {
+    return next(new CustomError("Password is required", 400))
+  }
+
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex")
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  }).select("+resetPasswordToken +resetPasswordExpire")
+
+  if (!user) {
+    return next(new CustomError("Invalid or expired reset token", 400))
+  }
+
+  user.password = password
+  user.resetPasswordToken = undefined
+  user.resetPasswordExpire = undefined
+  await user.save()
+
+  res.status(200).json({
+    success: true,
+    message: "Password reset successfully. Please login."
   })
 })
 
@@ -208,7 +315,10 @@ const logout = asyncHandler(async (req, res, next) => {
 
 module.exports = {
   register,
+  verifyEmail,
   login,
+  forgotPassword,
+  resetPassword,
   getMe,
   updateProfile,
   changePassword,

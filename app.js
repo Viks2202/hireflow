@@ -5,6 +5,7 @@ require("dotenv").config()
 const connectDB = require("./src/config/db")
 const jobRoutes = require("./src/routes/job.routes")
 const authRoutes = require("./src/routes/auth.routes")
+const userRoutes = require("./src/routes/user.routes")
 const logger = require("./src/middlewares/logger.middleware")
 const errorHandler = require("./src/middlewares/error.middleware")
 const requestTime = require("./src/middlewares/requestTime.middleware")
@@ -22,6 +23,7 @@ app.use(apiVersion)
 
 app.use("/auth", authRoutes)
 app.use("/jobs", jobRoutes)
+app.use("/users", userRoutes)
 
 app.get("/", (req, res) => {
   res.json({ message: "HireFlow API running!", version: "1.0.0" })
