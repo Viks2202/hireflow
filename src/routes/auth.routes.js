@@ -27,4 +27,18 @@ router.put("/change-password", protect, changePassword)
 router.post("/refresh", handleRefreshToken)
 router.post("/logout", protect, logout)
 
+router.get("/test-email", async (req, res) => {
+  try {
+    const { sendEmail } = require("../utils/email")
+    await sendEmail({
+      to: "test@example.com",
+      subject: "HireFlow Test Email",
+      html: "<h1>Email working!</h1>"
+    })
+    res.json({ success: true, message: "Email sent. Check Mailtrap." })
+  } catch (err) {
+    res.json({ success: false, message: err.message })
+  }
+})
+
 module.exports = router
