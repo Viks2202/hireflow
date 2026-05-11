@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema(
       default: "candidate"
     },
     resume: { type: String, default: null },
+resumePublicId: { type: String, default: null },
     skills: { type: [String], default: [] },
     company: { type: String, default: null },
     isVerified: { type: Boolean, default: false },
