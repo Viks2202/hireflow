@@ -102,9 +102,6 @@ const verifyEmail = asyncHandler(async (req, res, next) => {
   user.emailVerifyExpire = undefined
   await user.save({ validateBeforeSave: false })
 
-  const { subject, html } = emailTemplates.welcomeEmail(user.name)
-  await sendEmail({ to: user.email, subject, html })
-
   res.status(200).json({
     success: true,
     message: "Email verified successfully"
