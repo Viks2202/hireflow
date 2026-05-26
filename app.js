@@ -8,6 +8,7 @@ const jobRoutes = require("./src/routes/job.routes")
 const userRoutes = require("./src/routes/user.routes")
 const resumeRoutes = require("./src/routes/resume.routes")
 const applicationRoutes = require("./src/routes/application.routes")
+const adminRoutes = require("./src/routes/admin.routes")
 const logger = require("./src/middlewares/logger.middleware")
 const errorHandler = require("./src/middlewares/error.middleware")
 const requestTime = require("./src/middlewares/requestTime.middleware")
@@ -28,9 +29,20 @@ app.use("/jobs", jobRoutes)
 app.use("/users", userRoutes)
 app.use("/resume", resumeRoutes)
 app.use("/applications", applicationRoutes)
+app.use("/admin", adminRoutes)
 
 app.get("/", (req, res) => {
-  res.json({ message: "HireFlow API running!", version: "1.0.0" })
+  res.json({
+    message: "HireFlow API running!",
+    version: "1.0.0",
+    endpoints: {
+      auth: "/auth",
+      jobs: "/jobs",
+      applications: "/applications",
+      resume: "/resume",
+      admin: "/admin"
+    }
+  })
 })
 
 app.use((req, res) => {
