@@ -1,68 +1,96 @@
-# HireFlow — Job Board Platform API
+# HireFlow — Job Board Platform REST API
 
-A production-grade job board backend built with Node.js, Express, and MongoDB.
+A production-grade job board backend with role-based access for candidates, employers, and admins.
 
-## Live API
-https://hireflow-api.onrender.com
+## 🚀 Live
+| | URL |
+|--|--|
+| **API** | https://hireflow-api.onrender.com |
+| **Health** | https://hireflow-api.onrender.com/health |
+| **GitHub** | https://github.com/Viks2202/hireflow |
 
-## Tech Stack
-- Node.js + Express
-- MongoDB + Mongoose
-- JWT Authentication
-- Cloudinary (resume upload)
-- Nodemailer + Mailtrap
-- Bcrypt
+> Free tier sleeps after 15 min inactivity. First request may take 30-60 sec.
 
-## Features
-- Three roles: candidate, employer, admin
-- User auth with email verification
-- Employers post and manage jobs
-- Candidates apply with resume upload
-- Application status tracking
-- Email notifications on apply and status change
-- Advanced job search, filters, pagination
-- Admin dashboard with analytics
-- Role-based access control
+## 🛠 Tech Stack
+| Category | Technology |
+|----------|-----------|
+| Runtime | Node.js |
+| Framework | Express.js |
+| Database | MongoDB Atlas + Mongoose |
+| Auth | JWT + bcrypt + Refresh Tokens |
+| File Storage | Cloudinary (PDF resumes) |
+| Email | Nodemailer + Mailtrap |
+| Deployment | Render |
 
-## API Endpoints
+## 👥 Roles
+| Role | Can Do |
+|------|--------|
+| **candidate** | Apply for jobs, upload PDF resume, view applications, save jobs |
+| **employer** | Post jobs, view applicants, update application status |
+| **admin** | Everything + analytics, user management |
 
-### Auth
-- POST /auth/register (candidate/employer)
-- POST /auth/login
-- GET  /auth/me
-- POST /auth/forgot-password
-- POST /auth/reset-password/:token
+## ✅ Features
+- **Authentication** — Register (3 roles), Login, JWT, Email verification, Password reset
+- **Jobs** — CRUD, Search, Filter by type/location/salary/skills, Pagination
+- **Applications** — Apply, track status (applied→shortlisted→hired), email notifications
+- **Resume** — Upload PDF resume to Cloudinary, retrieve, delete
+- **Admin** — Dashboard with platform analytics
 
-### Jobs
-- GET    /jobs
-- GET    /jobs/:id
-- POST   /jobs (employer/admin)
-- PUT    /jobs/:id (employer/admin)
-- DELETE /jobs/:id (employer/admin)
+## 📋 API Endpoints
 
-### Applications
-- POST   /applications/job/:id (candidate)
-- GET    /applications/my (candidate)
-- GET    /applications/job/:id (employer)
-- PUT    /applications/:id/status (employer)
-- DELETE /applications/:id (candidate)
+### Auth `/auth`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /register | Register (candidate/employer) |
+| POST | /login | Login |
+| GET | /me | Get profile |
+| PUT | /profile | Update profile + skills |
+| PUT | /change-password | Change password |
+| POST | /forgot-password | Send reset email |
+| POST | /reset-password/:token | Reset password |
+| GET | /verify-email/:token | Verify email |
+| POST | /logout | Logout |
 
-### Resume
-- POST   /resume/upload (candidate)
-- GET    /resume/me
-- DELETE /resume/me
+### Jobs `/jobs`
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | / | Get all jobs (with filters) | No |
+| GET | /:id | Get single job | No |
+| GET | /search | Search jobs | No |
+| GET | /stats | Job statistics | No |
+| POST | / | Create job | Employer/Admin |
+| PUT | /:id | Update job | Employer/Admin |
+| DELETE | /:id | Delete job | Employer/Admin |
 
-### Admin
-- GET /admin/stats
-- GET /admin/users
-- GET /admin/jobs
-- GET /admin/applications
+### Applications `/applications`
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | /job/:id | Apply for job | Candidate |
+| GET | /my | My applications | Candidate |
+| DELETE | /:id | Withdraw application | Candidate |
+| GET | /job/:id | Job applicants | Employer/Admin |
+| PUT | /:id/status | Update status | Employer/Admin |
+| GET | /all | All applications | Admin |
 
-## Setup Locally
-```bash
-git clone https://github.com/Viks2202/hireflow
-cd hireflow
-npm install
-# Add .env file with your credentials
-npm run dev
-```
+### Resume `/resume`
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | /upload | Upload PDF resume | Candidate |
+| GET | /me | Get resume URL | Candidate |
+| DELETE | /me | Delete resume | Candidate |
+
+### Users `/users`
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | /candidates | All candidates | Employer/Admin |
+| GET | /employers | All employers | Admin |
+
+### Admin `/admin`
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | /stats | Dashboard statistics | Admin |
+| GET | /users | All users | Admin |
+| GET | /jobs | All jobs | Admin |
+| GET | /applications | All applications | Admin |
+
+## 🔍 Query Parameters (GET /jobs)
