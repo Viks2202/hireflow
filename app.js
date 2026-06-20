@@ -44,7 +44,8 @@ app.use(helmet())
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://hireflow-frontend.vercel.app",
+  "http://localhost:3001",
+  "https://hireflow-frontend-khaki.vercel.app/",  // ← your real URL
   process.env.CLIENT_URL
 ].filter(Boolean)
 
