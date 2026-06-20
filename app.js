@@ -38,8 +38,25 @@ connectDB()
 
 app.use(helmet())
 
+// ============================================
+// CORS — explicit allowlist (must come before routes)
+// ============================================
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://hireflow-frontend.vercel.app",
+  process.env.CLIENT_URL
+].filter(Boolean)
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || "*",
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      logger.error(`CORS blocked request from origin: ${origin}`)
+      callback(new Error("Not allowed by CORS"))
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
