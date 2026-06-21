@@ -29,6 +29,9 @@ const apiVersion = require("./src/middlewares/apiVersion.middleware")
 
 const app = express()
 
+// Trust Render's reverse proxy so express-rate-limit can read X-Forwarded-For correctly
+app.set("trust proxy", 1)
+
 // Connect to MongoDB
 connectDB()
 
@@ -45,7 +48,7 @@ app.use(helmet())
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
-  "https://hireflow-frontend-khaki.vercel.app",  // ← your real URL
+  "https://hireflow-frontend-khaki.vercel.app",
   process.env.CLIENT_URL
 ].filter(Boolean)
 
