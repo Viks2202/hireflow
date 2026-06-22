@@ -182,7 +182,39 @@ app.use(errorHandler)
 
 const PORT = process.env.PORT || 9000
 
-const server = app.listen(PORT, () => {
+const http = require("http")
+const { Server } = require("socket.io")
+
+const httpServer = http.createServer(app)
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true
+  }
+})
+
+const connectedUsers = new Map()
+
+io.on("connection", (socket) => {
+  socket.on("register", (userId) => {
+    connectedUsers.set(userId, socket.id)
+  })
+
+  socket.on("disconnect", () => {
+    for (const [userId, socketId] of connectedUsers.entries()) {
+      if (socketId === socket.id) {
+        connectedUsers.delete(userId)
+        break
+      }
+    }
+  })
+})
+
+app.set("io", io)
+app.set("connectedUsers", connectedUsers)
+
+const server = httpServer.listen(PORT, () => {
   logger.info(`HireFlow running on port ${PORT} [${process.env.NODE_ENV || "development"}]`)
 })
 
