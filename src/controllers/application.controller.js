@@ -142,13 +142,27 @@ const updateApplicationStatus = asyncHandler(async (req, res, next) => {
     console.error("Email failed:", err.message)
   }
 
+  // Real-time notification via Socket.io
+  const io = req.app.get("io")
+  const connectedUsers = req.app.get("connectedUsers")
+  const candidateId = application.candidate._id.toString()
+  const socketId = connectedUsers.get(candidateId)
+
+  if (socketId) {
+    io.to(socketId).emit("statusUpdate", {
+      applicationId: application._id,
+      jobTitle: application.job.title,
+      status: application.status,
+      message: `Your application for ${application.job.title} is now: ${application.status}`
+    })
+  }
+
   res.status(200).json({
     success: true,
     message: `Application status updated to ${status}`,
     application
   })
 })
-
 // WITHDRAW application
 const withdrawApplication = asyncHandler(async (req, res, next) => {
   const application = await Application.findById(req.params.id)
